@@ -11,4 +11,7 @@ if (!$conn) {
     die("Connection Failed: " . mysqli_connect_error());
 }
 
+// Set charset for security
+mysqli_set_charset($conn, "utf8mb4");
+
 ?>

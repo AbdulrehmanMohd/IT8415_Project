@@ -2,42 +2,105 @@
 session_start();
 include("config/db.php");
 
+$error = "";
+$success = "";
+
 if (isset($_POST['register'])) {
 
-    $username = $_POST['username'];
-    $email = $_POST['email'];
-    $password = md5($_POST['password']); // simple for assignment
+    // Server-side validation
+    $username = trim($_POST['username']);
+    $email    = trim($_POST['email']);
+    $password = $_POST['password'];
+    $confirm  = $_POST['confirm_password'];
+    $role     = $_POST['role'] ?? 'customer';
 
-    // check if email exists
-    $check = mysqli_query($conn, "SELECT * FROM dbproj_users WHERE email='$email'");
-
-    if (mysqli_num_rows($check) > 0) {
-        $error = "Email already exists!";
+    if (strlen($username) < 3) {
+        $error = "Username must be at least 3 characters.";
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = "Invalid email address.";
+    } elseif (strlen($password) < 6) {
+        $error = "Password must be at least 6 characters.";
+    } elseif ($password !== $confirm) {
+        $error = "Passwords do not match.";
     } else {
+        // Check if email exists (prepared statement)
+        $stmt = mysqli_prepare($conn, "SELECT user_id FROM dbproj_users WHERE email = ?");
+        mysqli_stmt_bind_param($stmt, "s", $email);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_store_result($stmt);
 
-        $sql = "INSERT INTO dbproj_users (username, email, password, role)
-                VALUES ('$username', '$email', '$password', 'customer')";
+        if (mysqli_stmt_num_rows($stmt) > 0) {
+            $error = "This email is already registered.";
+        } else {
+            // Secure password hash
+            $hashed = password_hash($password, PASSWORD_BCRYPT);
 
-        mysqli_query($conn, $sql);
+            $stmt2 = mysqli_prepare($conn, "INSERT INTO dbproj_users (username, email, password, role) VALUES (?, ?, ?, ?)");
+            mysqli_stmt_bind_param($stmt2, "ssss", $username, $email, $hashed, $role);
+            mysqli_stmt_execute($stmt2);
 
-        header("Location: index.php");
-            exit();
+            $success = "Account created! You can now <a href='login.php'>login</a>.";
+        }
     }
 }
 ?>
 
-<h2>Register</h2>
+<?php include("includes/header.php"); ?>
 
-<form method="POST">
+<div class="row justify-content-center">
+<div class="col-md-5">
+<div class="card p-4">
 
-    <input type="text" name="username" placeholder="Username" required><br><br>
+    <h2 class="text-center mb-3"><i class="bi bi-person-plus"></i> Register</h2>
 
-    <input type="email" name="email" placeholder="Email" required><br><br>
+    <div id="js-error"></div>
 
-    <input type="password" name="password" placeholder="Password" required><br><br>
+    <?php if ($error): ?>
+        <div class="alert alert-danger"><?php echo $error; ?></div>
+    <?php endif; ?>
+    <?php if ($success): ?>
+        <div class="alert alert-success"><?php echo $success; ?></div>
+    <?php endif; ?>
 
-    <button type="submit" name="register">Register</button>
+    <form method="POST" onsubmit="return validateRegister()">
 
-</form>
+        <div class="mb-3">
+            <label class="form-label">Username</label>
+            <input type="text" id="username" name="username" class="form-control bg-dark text-white border-secondary" required>
+        </div>
 
-<?php if (isset($error)) echo $error; ?>
+        <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" id="email" name="email" class="form-control bg-dark text-white border-secondary" required>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input type="password" id="password" name="password" class="form-control bg-dark text-white border-secondary" required>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Confirm Password</label>
+            <input type="password" id="confirm_password" name="confirm_password" class="form-control bg-dark text-white border-secondary" required>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Register as</label>
+            <select name="role" class="form-select bg-dark text-white border-secondary">
+                <option value="customer">Customer</option>
+                <option value="seller">Seller / Creator</option>
+            </select>
+        </div>
+
+        <button type="submit" name="register" class="btn btn-primary w-100">Create Account</button>
+
+    </form>
+
+    <p class="text-center mt-3 text-muted">Already have an account? <a href="login.php">Login</a></p>
+
+</div>
+</div>
+</div>
+
+<script src="assets/js/validate.js"></script>
+<?php include("includes/footer.php"); ?>

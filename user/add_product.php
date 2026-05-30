@@ -2,7 +2,7 @@
 include("../includes/header.php");
 include("../config/db.php");
 
-if (!isset($_SESSION['role']) || $_SESSION['role'] != 'admin') {
+if (!isset($_SESSION['role']) || $_SESSION['role'] != 'seller') {
     header("Location: ../login.php");
     exit();
 }
@@ -21,7 +21,7 @@ if (isset($_POST['add'])) {
     $seller_id   = $_SESSION['user_id'];
 
     if (strlen($name) < 2) {
-        $error = "Product name is required.";
+        $error = "Product name is too short.";
     } elseif ($price <= 0) {
         $error = "Price must be greater than 0.";
     } else {
@@ -30,12 +30,12 @@ if (isset($_POST['add'])) {
             VALUES (?, ?, ?, ?, ?, ?, ?)");
         mysqli_stmt_bind_param($stmt, "ssdissi", $name, $description, $price, $stock, $category, $image, $seller_id);
         mysqli_stmt_execute($stmt);
-        $success = "Product added successfully!";
+        $success = "Product published successfully!";
     }
 }
 ?>
 
-<h2 class="mb-4"><i class="bi bi-plus-circle"></i> Add Product</h2>
+<h2 class="mb-4"><i class="bi bi-plus-circle"></i> Add New Product</h2>
 <a href="dashboard.php" class="btn btn-outline-light btn-sm mb-3">← Back to Dashboard</a>
 
 <div class="card p-4" style="max-width:600px;">
@@ -71,22 +71,18 @@ if (isset($_POST['add'])) {
             <label class="form-label">Category</label>
             <select name="category" class="form-select bg-dark text-white border-secondary" required>
                 <option value="">Select Category</option>
-                <?php
-                mysqli_data_seek($categories, 0);
-                while ($row = mysqli_fetch_assoc($categories)) {
-                    echo "<option value='{$row['category_id']}'>{$row['category_name']}</option>";
-                }
-                ?>
+                <?php while ($row = mysqli_fetch_assoc($categories)) { ?>
+                    <option value="<?php echo $row['category_id']; ?>"><?php echo $row['category_name']; ?></option>
+                <?php } ?>
             </select>
         </div>
 
         <div class="mb-3">
             <label class="form-label">Image URL</label>
-            <input type="text" name="image" class="form-control bg-dark text-white border-secondary"
-                placeholder="https://...">
+            <input type="text" name="image" class="form-control bg-dark text-white border-secondary" placeholder="https://...">
         </div>
 
-        <button type="submit" name="add" class="btn btn-primary w-100">Add Product</button>
+        <button type="submit" name="add" class="btn btn-primary w-100">Publish Product</button>
     </form>
 </div>
 
